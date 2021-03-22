@@ -1,0 +1,66 @@
+  - hosts: all
+    tasks:
+      - name : "configuring docker repo"
+        yum_repository:
+                name: "docker"
+                gpgcheck: no
+                description: docker repo
+                baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+
+     
+      - name : "Installing docker-ce package"
+        command: "yum install docker-ce --nobest -y"
+
+      - name: "Installing Python Interpreter"
+        package:
+         name: "python3"
+         state: present
+         
+   
+      - debug: 
+            var: python.stdout
+      - name: "Installing docker-py"
+        command: pip3 install docker-py
+        register: docker
+
+      - debug: 
+            var: docker.stdout
+
+      - name: "Starting the docker services"
+        service:
+               name: "docker"
+               state: started
+               enabled: yes
+
+      - name: "Pulling a image from public repository docker.hub"
+        docker_image:
+              name: "httpd"
+              source: pull
+
+      - name : "Making a directory on  Managed Node"
+        file:
+            path: "/root/webserver"
+            state: directory
+
+      - name: "Inserting the webpage in docker container"
+        copy:
+           dest: "/root/webserver/index.html"
+           content : "This is my page"
+
+      - name: "Creating a docker container"
+        docker_container:
+              name: "MyWebServer"
+              image: "httpd"
+              volumes:
+                 - "/root/webserver:/usr/local/apache2/htdocs"
+              exposed_ports:
+                 - "80"
+              ports:
+                 - "8081:80"
+              state: started
+
+      - name: "Stopping firewalld"
+        service:
+             name: "firewalld"
+             state: stopped
+
